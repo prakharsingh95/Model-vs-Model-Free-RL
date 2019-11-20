@@ -11,11 +11,6 @@ from torch import nn, optim
 from torch.nn import functional as F
 from torchvision.utils import save_image
 
-from dataset import CarRacingDataset
-
-
-device = torch.device('cuda')
-
 
 class Encoder(nn.Module):
     def __init__(self, latent_dim):
@@ -78,6 +73,11 @@ class VAE(nn.Module):
         self.decoder = Decoder(output_size=self.input_size, latent_dim=latent_dim)
         self.optimizer = optim.Adam(self.parameters(), lr=1e-3)
 
+    def forward(self, x):
+        mu, logvar = self.encode(x)
+        z = self.reparameterize(mu, logvar)
+        return self.decode(z), mu, logvar
+
     def encode(self, x):
         return self.encoder(x)
 
@@ -89,15 +89,11 @@ class VAE(nn.Module):
         eps = torch.randn_like(std)
         return mu + eps*std
 
-    def forward(self, x):
-        mu, logvar = self.encode(x)
-        z = self.reparameterize(mu, logvar)
-        return self.decode(z), mu, logvar
-
+    # TODO: Move this to a loss file
     def loss_function(self, recon_x, x, mu, logvar):
-        bce = F.binary_cross_entropy(recon_x, x, reduction='sum')
+        mse = F.mse_loss(recon_x, x, reduction='sum')
         kld = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-        return bce + kld
+        return mse + kld
 
     def step(self, data):
         data = data.to(settings.device)
@@ -109,13 +105,14 @@ class VAE(nn.Module):
         self.optimizer.step()
         return loss
 
-    def train_on_data(self, epoch, train_loader, args):
+    # TODO: Move train and test to train_vae.py
+    def train_on_data(self, epoch, train_loader):
         self.train()
         train_loss = 0
         for batch_idx, data in enumerate(train_loader):
             loss = self.step(data)
             train_loss += loss.item()
-            if batch_idx % args.log_interval == 0:
+            if batch_idx % settings.log_interval == 0:
               print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                   epoch, batch_idx * len(data), len(train_loader.dataset),
                   100. * batch_idx / len(train_loader),
@@ -123,21 +120,21 @@ class VAE(nn.Module):
         print('====> Epoch: {} Average loss: {:.4f}'.format(
               epoch, train_loss / len(train_loader.dataset)))
 
-    def test_on_data(self, epoch, test_loader, args):
+    def test_on_data(self, epoch, test_loader):
         self.eval()
         test_loss = 0
         with torch.no_grad():
             for i, data in enumerate(test_loader):
-                data = data.to(device)
+                data = data.to(settings.device)
                 recon_batch, mu, logvar = self.forward(data)
                 test_loss = self.loss_function(recon_batch, data, mu,
                                                logvar).item()
                 if i == 0:
                     n = min(data.size(0), 8)
                     comparison = torch.cat([data[:n], recon_batch.view(
-                                                          args.batch_size, 3,
+                                                          settings.batch_size, 3,
                                                           64, 64)[:n]])
                     save_image(comparison.cpu(),
-                               f'results/reconstruction_{epoch}.png', nrow=n)
+                               f'reconstruction_{epoch}.png', nrow=n)
         test_loss /= len(test_loader.dataset)
         print('====> Test set loss: {:.4f}'.format(test_loss))

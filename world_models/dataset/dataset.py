@@ -1,10 +1,10 @@
-'''Return a dataset that generates images from a csv file rooted with
-root_dir.
-'''
+'''Return a dataset that generates images from a csv file.'''
 
 import matplotlib.pyplot as plt
+import os
 import torch
 
+from pathlib import Path
 from torch.utils.data import Dataset
 
 
@@ -19,15 +19,19 @@ class ToTensor():
 
 
 class CSVDataset(Dataset):
-    def __init__(self, csv_file, root_dir):
+    '''This assumes that the csv contains filenames relative to the
+    directory this file is located.
+    '''
+    def __init__(self, csv_file):
+        self.cwd = Path(os.path.dirname(__file__))
+        csv_file = self.cwd/csv_file
         self.filenames = open(csv_file).read().splitlines()
-        self.root_dir = root_dir
         self.transform = ToTensor()
 
     def __len__(self):
         return len(self.filenames)
 
     def __getitem__(self, idx):
-        filename = (self.root_dir/self.filenames[idx]).as_posix()
+        filename = (self.cwd/self.filenames[idx]).as_posix()
         image = plt.imread(filename)
         return self.transform(image)
