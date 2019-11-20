@@ -1,4 +1,6 @@
-#!/usr/bin/env python3
+'''Return a dataset that generates images from a csv file rooted with
+root_dir.
+'''
 
 import matplotlib.pyplot as plt
 import torch
@@ -6,14 +8,17 @@ import torch
 from torch.utils.data import Dataset
 
 
-class ToTensor(object):
+class ToTensor():
     def __call__(self, image):
-        '''Make color axis first dimension to accord with pytorch.'''
+        '''Make color axis first dimension to accord with pytorch. This
+        assumes the image has the color axis as the third dimension, as
+        it will through plt.imread.
+        '''
         image = image.transpose((2, 0, 1))
         return image
 
 
-class CarRacingDataset(Dataset):
+class CSVDataset(Dataset):
     def __init__(self, csv_file, root_dir):
         self.filenames = open(csv_file).read().splitlines()
         self.root_dir = root_dir
