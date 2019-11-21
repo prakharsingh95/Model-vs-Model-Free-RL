@@ -104,37 +104,3 @@ class VAE(nn.Module):
         train_loss = loss.item()
         self.optimizer.step()
         return loss
-
-    # TODO: Move train and test to train_vae.py
-    def train_on_data(self, epoch, train_loader):
-        self.train()
-        train_loss = 0
-        for batch_idx, data in enumerate(train_loader):
-            loss = self.step(data)
-            train_loss += loss.item()
-            if batch_idx % settings.log_interval == 0:
-              print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                  epoch, batch_idx * len(data), len(train_loader.dataset),
-                  100. * batch_idx / len(train_loader),
-                  loss.item() / len(data)))
-        print('====> Epoch: {} Average loss: {:.4f}'.format(
-              epoch, train_loss / len(train_loader.dataset)))
-
-    def test_on_data(self, epoch, test_loader):
-        self.eval()
-        test_loss = 0
-        with torch.no_grad():
-            for i, data in enumerate(test_loader):
-                data = data.to(settings.device)
-                recon_batch, mu, logvar = self.forward(data)
-                test_loss = self.loss_function(recon_batch, data, mu,
-                                               logvar).item()
-                if i == 0:
-                    n = min(data.size(0), 8)
-                    comparison = torch.cat([data[:n], recon_batch.view(
-                                                          settings.batch_size, 3,
-                                                          64, 64)[:n]])
-                    save_image(comparison.cpu(),
-                               f'reconstruction_{epoch}.png', nrow=n)
-        test_loss /= len(test_loader.dataset)
-        print('====> Test set loss: {:.4f}'.format(test_loss))
