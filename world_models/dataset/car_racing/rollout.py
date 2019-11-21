@@ -33,7 +33,7 @@ class CarRacingWrapper(CarRacing):
         
         # Try to switch this to cv2 resize
         # Reshape to 64x64x3
-        frame = scipy.misc.imresize(frame, (self.width, self.height)
+        frame = scipy.misc.imresize(frame, (self.width, self.height))
         frame = ((1.0 - frame) * 255).round().astype(np.uint8)
         return frame
 
