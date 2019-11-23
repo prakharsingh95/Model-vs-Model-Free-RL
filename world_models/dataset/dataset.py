@@ -59,6 +59,7 @@ class CSVSequenceDataset(Dataset):
             length, an exception is raised.
         """
         self.cwd = Path(os.path.dirname(__file__))
+        dirs_file = self.cwd/dirs_file
         dirs = open(dirs_file).read().splitlines()
         self._first_files = []
         for _dir in dirs:
