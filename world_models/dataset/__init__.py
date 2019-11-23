@@ -1,1 +1,1 @@
-from .dataset import CSVDataset
+from .dataset import CSVDataset, CSVSequenceDataset
