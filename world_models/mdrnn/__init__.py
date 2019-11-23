@@ -1,1 +1,1 @@
-from .MixtureDensityLSTM import MixtureDensityLSTM
+from .MixtureDensityLSTM import MixtureDensityLSTM, MixtureDensityLSTMCell
