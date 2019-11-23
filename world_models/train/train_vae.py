@@ -46,7 +46,7 @@ def test_on_data(model, epoch, test_loader):
         for i, data in enumerate(test_loader):
             data = data.to(settings.device)
             recon_batch, mu, logvar = model.forward(data)
-            test_loss = model.loss_function(recon_batch, data, mu,
+            test_loss += model.loss_function(recon_batch, data, mu,
                                            logvar).item()
     test_loss /= len(test_loader.dataset)
     print('====> Test set loss: {:.4f}'.format(test_loss))
