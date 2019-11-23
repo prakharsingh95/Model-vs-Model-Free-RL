@@ -28,9 +28,7 @@ class CarRacingWrapper(CarRacing):
         return self.process_frame(state), _, done, _
 
     def process_frame(self, frame):
-        # Try to switch this to cv2 resize
         # Reshape to 64x64x3
-        # frame = scipy.misc.imresize(frame, (self.width, self.height))
         frame = Image.fromarray(frame)
         frame = frame.resize((self.width, self.height), resample=Image.BILINEAR)
         frame = np.array(frame)
