@@ -107,5 +107,13 @@ venv.bak/
 *.swp
 *.swo
 
-# Misc
+# Model files
+*.pt
+
+# Training and logging files
 rollout/
+world_models/dataset/car_racing/test_images.txt
+world_models/dataset/car_racing/train_images.txt
+world_models/train/results/
+world_models/train/vae.pt
+
