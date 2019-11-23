@@ -76,7 +76,7 @@ class VAE(nn.Module):
     def forward(self, x):
         mu, logvar = self.encode(x)
         z = self.reparameterize(mu, logvar)
-        return self.decode(z), mu, logvar
+        return self.decode(z), z, mu, logvar
 
     def encode(self, x):
         return self.encoder(x)
@@ -98,7 +98,7 @@ class VAE(nn.Module):
     def step(self, data):
         data = data.to(settings.device)
         self.optimizer.zero_grad()
-        recon_batch, mu, logvar = self.forward(data)
+        recon_batch, _, mu, logvar = self.forward(data)
         loss = self.loss_function(recon_batch, data, mu, logvar)
         loss.backward()
         train_loss = loss.item()
