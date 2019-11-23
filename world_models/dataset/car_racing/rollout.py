@@ -24,16 +24,20 @@ class CarRacingWrapper(CarRacing):
                                      shape=(self.width, self.height, 3))
 
     def step(self, action):
-        state, _, done, _ = super(CarRacingWrapper, self)._step(action)
+        state, _, done, _ = super(CarRacingWrapper, self).step(action)
         return self.process_frame(state), _, done, _
 
     def process_frame(self, frame):
-        # Cut off last 10 pixels since these are UI for human
-        frame = frame[0:84,:,:].astype(np.float)/255.0
-        
         # Try to switch this to cv2 resize
         # Reshape to 64x64x3
-        frame = scipy.misc.imresize(frame, (self.width, self.height))
+        # frame = scipy.misc.imresize(frame, (self.width, self.height))
+        frame = Image.fromarray(frame)
+        frame = frame.resize((self.width, self.height), resample=Image.BILINEAR)
+        frame = np.array(frame)
+
+        # Cut off last 10 pixels since these are UI for human
+        frame = frame[0:84,:,:].astype(np.float)/255.0
+
         frame = ((1.0 - frame) * 255).round().astype(np.uint8)
         return frame
 
