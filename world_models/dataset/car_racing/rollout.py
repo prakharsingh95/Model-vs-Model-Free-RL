@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import scipy
+import json
 
 from PIL import Image
 from gym.envs.box2d.car_racing import CarRacing
@@ -24,17 +25,18 @@ class CarRacingWrapper(CarRacing):
                                      shape=(self.width, self.height, 3))
 
     def step(self, action):
-        state, _, done, _ = super(CarRacingWrapper, self).step(action)
-        return self.process_frame(state), _, done, _
+        state, reward, done, _ = super(CarRacingWrapper, self).step(action)
+        return self.process_frame(state), reward, done, _
 
     def process_frame(self, frame):
         # Reshape to 64x64x3
         frame = Image.fromarray(frame)
-        frame = frame.resize((self.width, self.height), resample=Image.BILINEAR)
+        frame = frame.resize((self.width, self.height),
+                             resample=Image.BILINEAR)
         frame = np.array(frame)
 
         # Cut off last 10 pixels since these are UI for human
-        frame = frame[0:84,:,:].astype(np.float)/255.0
+        frame = frame[0:84, :, :].astype(np.float)/255.0
 
         frame = ((1.0 - frame) * 255).round().astype(np.uint8)
         return frame
@@ -60,13 +62,28 @@ def rollout(env, savedir):
     env.reset()
     num_seen_frames = 0
     done = False
+    metadata = []
+
+    state = None
     while num_seen_frames < max_frames and not done:
         # TODO: Get action from RNN
         action = env.action_space.sample()
         env.render('rgb_array')  # Look into why this call is necessary.
-        state, _, done, _ = env.step(action)
-        cv2.imwrite(f'{savedir}/frame_{num_seen_frames:04}.png', state)
-        num_seen_frames += 1
+        next_state, reward, done, _ = env.step(action)
+
+        if state is not None:
+            cv2.imwrite(f'{savedir}/frame_{num_seen_frames:04}.png', state)
+            metadata.append(
+                dict(idx=num_seen_frames,
+                     action=action.tolist(),
+                     reward=reward, done=done))
+            num_seen_frames += 1
+        state = next_state
+
+
+    with open(f'{savedir}/metadata.json', 'w') as f:
+        content = json.dumps(metadata, indent=4)
+        f.write(content)
 
 
 def main():
