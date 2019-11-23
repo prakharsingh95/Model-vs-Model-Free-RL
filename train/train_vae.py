@@ -45,7 +45,7 @@ def test_on_data(model, epoch, test_loader):
     with torch.no_grad():
         for i, data in enumerate(test_loader):
             data = data.to(settings.device)
-            recon_batch, mu, logvar = model.forward(data)
+            recon_batch, _, mu, logvar = model.forward(data)
             test_loss += model.loss_function(recon_batch, data, mu,
                                            logvar).item()
     test_loss /= len(test_loader.dataset)
