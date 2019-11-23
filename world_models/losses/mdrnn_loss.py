@@ -1,6 +1,7 @@
 """Definitions for various loss functions used in this project.
 """
 
+import torch
 import torch.nn as nn
 from torch.distributions.normal import Normal
 
