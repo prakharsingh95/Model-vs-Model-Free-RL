@@ -21,13 +21,13 @@ class _MixtureDensityLSTMBase(nn.Module):
         self.NUM_GAUSSIANS = NUM_GAUSSIANS
 
         # Torch layers for forward()
-        self.muLayer = nn.Linear(
+        self.mu_layer = nn.Linear(
             self.NUM_HIDDENS, self.NUM_LATENTS * self.NUM_GAUSSIANS)
-        self.sigmaLayer = nn.Linear(
+        self.sigma_layer = nn.Linear(
             self.NUM_HIDDENS, self.NUM_LATENTS * self.NUM_GAUSSIANS)
-        self.MDLogProbLayer = nn.Linear(self.NUM_HIDDENS, self.NUM_GAUSSIANS)
-        self.rewardLayer = nn.Linear(self.NUM_HIDDENS, 1)
-        self.terminationProbLayer = nn.Linear(self.NUM_HIDDENS, 1)
+        self.md_log_prob_layer = nn.Linear(self.NUM_HIDDENS, self.NUM_GAUSSIANS)
+        self.reward_layer = nn.Linear(self.NUM_HIDDENS, 1)
+        self.termination_prob_layer = nn.Linear(self.NUM_HIDDENS, 1)
 
     def forward(self, x):
         pass
@@ -43,11 +43,11 @@ class MixtureDensityLSTM(_MixtureDensityLSTMBase):
         self.lstm = nn.LSTM(self.NUM_LATENTS + self.NUM_ACTIONS,
                             self.NUM_HIDDENS, num_layers=1, batch_first=True)
 
-    def forward(self,  inActions, inLatents):
+    def forward(self,  in_actions, in_latents):
 
-        BATCH_SIZE, SEQ_LEN = inActions.shape[0], inActions.shape[1]
+        BATCH_SIZE, SEQ_LEN = in_actions.shape[0], in_actions.shape[1]
 
-        inputs = torch.cat((inActions, inLatents), dim=-1)
+        inputs = torch.cat((in_actions, in_latents), dim=-1)
 
         # h0 and c0 are treated as 0, which would not be the case during 
         # inference
@@ -55,28 +55,28 @@ class MixtureDensityLSTM(_MixtureDensityLSTMBase):
 
 
         # Means of output latents
-        outMus = self.muLayer(outLSTMStates)
-        outMus = outMus.view(BATCH_SIZE, SEQ_LEN, self.NUM_GAUSSIANS, self.NUM_LATENTS)
+        out_mus = self.mu_layer(outLSTMStates)
+        out_mus = out_mus.view(BATCH_SIZE, SEQ_LEN, self.NUM_GAUSSIANS, self.NUM_LATENTS)
 
         # Sigmas of output latents
-        outSigmas = self.sigmaLayer(outLSTMStates)
-        outSigmas = outSigmas.view(
+        out_sigmas = self.sigma_layer(outLSTMStates)
+        out_sigmas = out_sigmas.view(
             BATCH_SIZE, SEQ_LEN, self.NUM_GAUSSIANS, self.NUM_LATENTS)
-        outSigmas = outSigmas.exp()
+        out_sigmas = out_sigmas.exp()
 
         # Log probabilities
-        outMDLogProbs = self.MDLogProbLayer(outLSTMStates)
-        outMDLogProbs = outMDLogProbs.view(BATCH_SIZE, SEQ_LEN, self.NUM_GAUSSIANS)
-        outMDLogProbs = f.log_softmax(outMDLogProbs, dim=-1)
+        out_md_logprobs = self.md_log_prob_layer(outLSTMStates)
+        out_md_logprobs = out_md_logprobs.view(BATCH_SIZE, SEQ_LEN, self.NUM_GAUSSIANS)
+        out_md_logprobs = f.log_softmax(out_md_logprobs, dim=-1)
 
         # Reward
-        outRewards = self.rewardLayer(outLSTMStates)
+        out_rewards = self.reward_layer(outLSTMStates)
 
         # Episode termination probability
-        outTerminationProbs = self.terminationProbLayer(outLSTMStates)
-        outTerminationProbs = torch.sigmoid(outTerminationProbs)
+        out_termination_probs = self.termination_prob_layer(outLSTMStates)
+        out_termination_probs = torch.sigmoid(out_termination_probs)
 
-        return outMus, outSigmas, outMDLogProbs, outRewards, outTerminationProbs
+        return out_mus, out_sigmas, out_md_logprobs, out_rewards, out_termination_probs
 
 
 class MixtureDensityLSTMCell(_MixtureDensityLSTMBase):
@@ -99,52 +99,52 @@ class MixtureDensityLSTMCell(_MixtureDensityLSTMBase):
             NUM_LATENTS, NUM_ACTIONS, NUM_HIDDENS, NUM_GAUSSIANS)
 
         # Torch LSTM Cell for forward()
-        self.lstmCell = nn.LSTMCell(
+        self.lstm_cell = nn.LSTMCell(
             self.NUM_LATENTS + self.NUM_ACTIONS, self.NUM_HIDDENS)
 
-    def forward(self, inActions, in_hidden, inLatents):
+    def forward(self, in_actions, in_hidden, in_latents):
         """Predict the next latent distribution given the previous 
         latent distribution
 
         Args:
-            inActions: Action to predict for
+            in_actions: Action to predict for
             in_hidden: Previous LSTM state
-            inLatents: Previous latents (this is NOT a distribution)
+            in_latents: Previous latents (this is NOT a distribution)
 
         Returns:
-            5-tuple: outMus, outSigmas, outMDLogProbs, outRewards, 
-            outTerminationProbs
+            5-tuple: out_mus, out_sigmas, out_md_logprobs, out_rewards, 
+            out_termination_probs
             Returns means, sigmas and mixtures for the next latent, along 
             with predictions for the next reward and whether the episode 
             will terminate or not
         """
-        inputs = torch.cat((inActions, inLatents), dim=-1)
-        out_hiddens = self.lstmCell(inputs, in_hidden)
+        inputs = torch.cat((in_actions, in_latents), dim=-1)
+        out_hiddens = self.lstm_cell(inputs, in_hidden)
         out_states = out_hiddens[0]
 
-        BATCH_SIZE = inActions.shape[0]
+        BATCH_SIZE = in_actions.shape[0]
 
         # Means of output latents
-        outMus = self.muLayer(out_states)
-        outMus = outMus.view(BATCH_SIZE, self.NUM_GAUSSIANS, self.NUM_LATENTS)
+        out_mus = self.mu_layer(out_states)
+        out_mus = out_mus.view(BATCH_SIZE, self.NUM_GAUSSIANS, self.NUM_LATENTS)
 
         # Sigmas of output latents
-        outSigmas = self.sigmaLayer(out_states)
-        outSigmas = outSigmas.view(
+        out_sigmas = self.sigma_layer(out_states)
+        out_sigmas = out_sigmas.view(
             BATCH_SIZE, self.NUM_GAUSSIANS, self.NUM_LATENTS)
-        outSigmas = outSigmas.exp()
+        out_sigmas = out_sigmas.exp()
 
         # Log probabilities
-        outMDLogProbs = self.MDLogProbLayer(out_states)
-        outMDLogProbs = outMDLogProbs.view(BATCH_SIZE, self.NUM_GAUSSIANS)
-        outMDLogProbs = f.log_softmax(outMDLogProbs, dim=-1)
+        out_md_logprobs = self.md_log_prob_layer(out_states)
+        out_md_logprobs = out_md_logprobs.view(BATCH_SIZE, self.NUM_GAUSSIANS)
+        out_md_logprobs = f.log_softmax(out_md_logprobs, dim=-1)
 
         # Reward
-        outRewards = self.rewardLayer(out_states)
+        out_rewards = self.reward_layer(out_states)
 
         # Episode termination probability
-        outTerminationProbs = self.terminationProbLayer(out_states)
-        outTerminationProbs = torch.sigmoid(outTerminationProbs)
+        out_termination_probs = self.termination_prob_layer(out_states)
+        out_termination_probs = torch.sigmoid(out_termination_probs)
 
-        return outMus, outSigmas, outMDLogProbs, outRewards,
-        outTerminationProbs, out_hiddens
+        return out_mus, out_sigmas, out_md_logprobs, out_rewards,
+        out_termination_probs, out_hiddens
