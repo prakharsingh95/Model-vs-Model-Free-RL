@@ -18,7 +18,9 @@ def make_csv():
         trajectory = Path(i)
         for file in sorted(trajectory.iterdir()):
             # TODO: Abstract this
-            files.append(('car_racing'/file).as_posix())
+            path = ('car_racing'/file).as_posix()
+            if path.endswith('.png'):
+                files.append(path)
     np.random.shuffle(files)
     split = int(settings.train_test_split*len(files))
     train_files = files[:split]
