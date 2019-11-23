@@ -115,10 +115,10 @@ class CSVSequenceDataset(Dataset):
         rewards = np.array(rewards)
         dones = np.array(dones)
 
-        cur_states = states[:-1]
-        actions = actions[:-1]
-        rewards = rewards[:-1].reshape(-1, 1)
-        dones = dones[:-1].reshape(-1, 1)
-        next_states = states[1:]
+        cur_states = torch.FloatTensor(states[:-1])
+        actions = torch.FloatTensor(actions[:-1])
+        rewards = torch.FloatTensor(rewards[:-1].reshape(-1, 1))
+        dones = torch.FloatTensor(dones[:-1].reshape(-1, 1))
+        next_states = torch.FloatTensor(states[1:])
 
         return cur_states, actions, rewards, dones, next_states
