@@ -106,3 +106,6 @@ venv.bak/
 # Ignore vim save-buffer files
 *.swp
 *.swo
+
+# Misc
+rollout/
