@@ -3,11 +3,11 @@
 import torch
 
 
-batch_size = 128
+batch_size = 32
 cuda = True
 device = torch.device('cuda')
-log_interval = 10
-num_epochs = 3
+log_interval = 20
+num_epochs = 30
 seed = 2718
 train_test_split = 0.8
 
@@ -24,6 +24,7 @@ vae_latent_dim = 32
 # MDRNN Parameters
 num_epochs_mdrnn = 30
 mdrnn_batch_size = 16
+mdrnn_save_freq = 100
 
 mdrnn_hidden_dim = 256
 mdrnn_num_gaussians = 5
