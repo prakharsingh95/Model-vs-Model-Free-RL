@@ -62,18 +62,22 @@ def parse_args():
 def rollout(env, savedir):
     images = Path('images')
     random_val = np.random.randint(0, 2**31-1)
-    max_frames = 200
+    max_frames = 1000
     env.reset()
     num_seen_frames = 0
     done = False
     metadata = []
 
     state = None
-    while num_seen_frames < max_frames and not done:
+    while not done:
         # TODO: Get action from RNN
         action = env.action_space.sample()
         env.render('rgb_array')  # Look into why this call is necessary.
         next_state, reward, done, _ = env.step(action)
+
+        if num_seen_frames >= max_frames:
+            done = True
+            reward = -100.0
 
         if state is not None:
             cv2.imwrite(f'{savedir}/frame_{num_seen_frames:04}.png', state)
