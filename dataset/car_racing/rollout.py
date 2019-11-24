@@ -29,20 +29,13 @@ class CarRacingWrapper(CarRacing):
         return self.process_frame(state), reward, done, _
 
     def process_frame(self, frame):
-
         # Cut off last 10 pixels since these are UI for human
         frame = frame[0:84, :, :]
-
         # Reshape to 64x64x3
         frame = Image.fromarray(frame)
         frame = frame.resize((self.width, self.height),
                              resample=Image.BILINEAR)
         frame = np.array(frame)
-
-        # Convert to 0-1
-        frame = frame.astype(np.float)/255.0
-
-        frame = ((1.0 - frame) * 255).round().astype(np.uint8)
         return frame
 
 
