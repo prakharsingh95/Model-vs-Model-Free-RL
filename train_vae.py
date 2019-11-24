@@ -52,7 +52,7 @@ def test_on_data(model, epoch, test_loader):
     print('====> Test set loss: {:.4f}'.format(test_loss))
 
 
-def run(model):
+def run(model, savefile):
     train_csv = os.path.join('car_racing', 'train_images.txt')
     test_csv = os.path.join('car_racing', 'test_images.txt')
     train_dataset = dataset.CSVDataset(train_csv)
@@ -75,19 +75,22 @@ def run(model):
             save_image(sample.view(64, 3, 64, 64),
                        f'{results}/sample_{epoch}.png')
 
+        # TODO: implement early stopping
+        torch.save(model.state_dict(), f'{savefile}')
+
 
 def main():
     args = parse_args()
     torch.manual_seed(settings.seed)
 
     model = VAE(input_size=(3, 64, 64), latent_dim=32).to(settings.device)
+
     savefile = Path(args.savefile)
+
     if savefile.exists():
         model.load_state_dict(torch.load(f'{savefile}'))
         model.eval()
-    run(model)
-    torch.save(model.state_dict(), f'{savefile}')
-
+    run(model, savefile)
 
 if __name__ == '__main__':
     main()
