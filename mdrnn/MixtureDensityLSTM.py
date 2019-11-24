@@ -6,6 +6,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as f
 
+from torch.distributions.normal import Normal
+
 
 class _MixtureDensityLSTMBase(nn.Module):
 
@@ -43,7 +45,7 @@ class MixtureDensityLSTM(_MixtureDensityLSTMBase):
         self.lstm = nn.LSTM(self.NUM_LATENTS + self.NUM_ACTIONS,
                             self.NUM_HIDDENS, num_layers=1, batch_first=True)
 
-    def forward(self,  in_actions, in_latents):
+    def forward(self,  in_actions, in_latents, sample=False):
 
         BATCH_SIZE, SEQ_LEN = in_actions.shape[0], in_actions.shape[1]
 
@@ -76,7 +78,15 @@ class MixtureDensityLSTM(_MixtureDensityLSTMBase):
         out_termination_probs = self.termination_prob_layer(outLSTMStates)
         out_termination_probs = torch.sigmoid(out_termination_probs)
 
-        return out_mus, out_sigmas, out_md_logprobs, out_rewards, out_termination_probs
+        if sample:
+            distrib = Normal(out_mus, out_sigmas)
+            sampled_z_gauss = distrib.rsample()
+            out_md_probs = out_md_logprobs.exp().unsqueeze(-1)
+            sampled_z = torch.sum(sampled_z_gauss * out_md_probs, dim=-2)
+        else:
+            sampled_z = None
+
+        return out_mus, out_sigmas, out_md_logprobs, out_rewards, out_termination_probs, sampled_z
 
 
 class MixtureDensityLSTMCell(_MixtureDensityLSTMBase):
