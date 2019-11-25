@@ -25,7 +25,7 @@ class Encoder(nn.Module):
                                kernel_size=4, stride=2) # -> 256 x 2 x 2
         compressed_size = 256 * 2 * 2
         self.z_mean = nn.Linear(compressed_size, latent_dim)
-        self.z_logsd = nn.Linear(compressed_size, latent_dim)
+        self.z_log_sd = nn.Linear(compressed_size, latent_dim)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
@@ -34,8 +34,8 @@ class Encoder(nn.Module):
         x = F.relu(self.conv4(x))
         x = x.view(x.shape[0], -1)
         mean = self.z_mean(x)
-        logsd = self.z_logsd(x)
-        return mean, logsd
+        log_sd = self.z_log_sd(x)
+        return mean, log_sd
 
 
 class Decoder(nn.Module):
@@ -68,15 +68,16 @@ class Decoder(nn.Module):
 class VAE(nn.Module):
     def __init__(self, input_size, latent_dim):
         super(VAE, self).__init__()
-        self.input_size = input_size
+        self.channels, self.img_width, self.img_height = input_size
+        self.latent_dim = latent_dim
         self.encoder = Encoder(latent_dim)
-        self.decoder = Decoder(output_size=self.input_size, latent_dim=latent_dim)
+        self.decoder = Decoder(output_size=input_size, latent_dim=latent_dim)
         self.optimizer = optim.Adam(self.parameters(), lr=1e-3)
 
     def forward(self, x):
-        mu, logvar = self.encode(x)
-        z = self.reparameterize(mu, logvar)
-        return self.decode(z), z, mu, logvar
+        mu, log_sd = self.encode(x)
+        z = self.reparameterize(mu, log_sd)
+        return self.decode(z), z, mu, log_sd
 
     def encode(self, x):
         return self.encoder(x)
@@ -84,22 +85,21 @@ class VAE(nn.Module):
     def decode(self, z):
         return self.decoder(z)
 
-    def reparameterize(self, mu, logvar):
-        std = torch.exp(0.5*logvar)
+    def reparameterize(self, mu, log_sd):
+        std = torch.exp(0.5*log_sd)
         eps = torch.randn_like(std)
         return mu + eps*std
 
-    # TODO: Move this to a loss file
-    def loss_function(self, recon_x, x, mu, logvar):
+    def loss_function(self, recon_x, x, mu, log_sd):
         mse = F.mse_loss(recon_x, x, reduction='sum')
-        kld = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+        kld = -0.5 * torch.sum(1 + log_sd - mu.pow(2) - log_sd.exp())
         return mse + kld
 
     def step(self, data):
         data = data.to(settings.device)
         self.optimizer.zero_grad()
-        recon_batch, _, mu, logvar = self.forward(data)
-        loss = self.loss_function(recon_batch, data, mu, logvar)
+        recon_batch, _, mu, log_sd = self.forward(data)
+        loss = self.loss_function(recon_batch, data, mu, log_sd)
         loss.backward()
         train_loss = loss.item()
         self.optimizer.step()
