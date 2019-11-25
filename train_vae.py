@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-'''Train VAE model on data created using extract.py.'''
+'''Train VAE on data created through extract.py.'''
 
 import argparse
 import matplotlib.pyplot as plt
@@ -13,51 +13,86 @@ import dataset
 from pathlib import Path
 from torch.utils.data import DataLoader
 from torchvision.utils import save_image
+from tqdm import tqdm
 
 from vae.vae import VAE
 
 cwd = Path(os.path.dirname(__file__))
+results = cwd/'results'
+viz = results/'vae'
+viz.mkdir(parents=True, exist_ok=True)
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='VAE')
     parser.add_argument('--savefile', type=str, default=f'{cwd}/vae.pt',
-                        help='Location to save VAE model parameters.')
+                        help='Location to save VAE parameters.')
     args = parser.parse_args()
     return args
 
 
-def train_on_data(model, epoch, train_loader):
-    model.train()
-    train_loss = 0
-    for batch_idx, data in enumerate(train_loader):
-        loss = model.step(data)
-        train_loss += loss.item()
-        if batch_idx % settings.log_interval == 0:
-          print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-              epoch, batch_idx * len(data), len(train_loader.dataset),
-              100. * batch_idx / len(train_loader),
-              loss.item() / len(data)))
-    print('====> Epoch: {} Average loss: {:.4f}'.format(
-          epoch, train_loss / len(train_loader.dataset)))
+def train_on_data(vae, epoch, train_loader):
+    vae.train()
+    data = train_loader.__iter__()
+    length = len(train_loader)
+    average_loss = 0
+    with tqdm(total=length) as pbar:
+        for i in range(1, length+1):
+            loss = vae.step(next(data))
+            average_loss = (i * average_loss + loss.item()) / (i + 1)
+            pbar.set_description(f'Average batch loss {average_loss:.3f}')
+            pbar.update(1)
 
 
-def test_on_data(model, epoch, test_loader):
-    model.eval()
+def test_on_data(vae, epoch, test_loader):
+    vae.eval()
     test_loss = 0
     with torch.no_grad():
-        for i, data in enumerate(test_loader):
+        for _, data in enumerate(test_loader):
             data = data.to(settings.device)
-            recon_batch, _, mu, logvar = model.forward(data)
-            test_loss += model.loss_function(recon_batch, data, mu,
+            recon_batch, _, mu, logvar = vae.forward(data)
+            test_loss += vae.loss_function(recon_batch, data, mu,
                                            logvar).item()
-    test_loss /= len(test_loader.dataset)
-    print('====> Test set loss: {:.4f}'.format(test_loss))
+    return test_loss / len(test_loader)
 
 
-def run(model, savefile):
+def plot_sample_space(vae, epoch):
+    '''Visualize the VAE distribution.'''
+    sample_size = 64
+    sample = torch.randn(sample_size, vae.latent_dim).to(settings.device)
+    sample = vae.decode(sample).cpu()
+    save_image(sample.view(sample_size, vae.channels, vae.img_width,
+                           vae.img_height),
+               f'{viz}/sample_{epoch}.png')
+
+
+def plot_autoencoding(vae, dataset, epoch):
+    '''Visualize how well the VAE autoencodes.'''
+    num_comparisons = 8
+    indices = np.random.randint(len(dataset), size=num_comparisons)
+    images = np.array([dataset[i] for i in indices])
+    tensor = torch.from_numpy(np.array(images)).to(settings.device)
+    reconstruction_tensor, _, _, _ = vae(tensor)
+    reconstruction = reconstruction_tensor.cpu().data.numpy()
+    fig = plt.figure(figsize=(4*num_comparisons, num_comparisons))
+    for i in range(num_comparisons):
+        plt.subplot(2, num_comparisons, i+1)
+        plt.imshow(images[i].transpose((1, 2, 0)))
+        plt.xticks([])
+        plt.yticks([])
+        plt.subplot(2, num_comparisons, num_comparisons+i+1)
+        plt.imshow(reconstruction[i].transpose((1, 2, 0)))
+        plt.xticks([])
+        plt.yticks([])
+    fig.subplots_adjust(wspace=0, hspace=0)
+    plt.savefig(f'{viz}/reconstruction_{epoch}.png')
+
+
+def run(vae, savefile):
+    # TODO: Load the train and test images from a single file, and then
+    # split
     train_csv = os.path.join('car_racing', 'train_images.txt')
-    test_csv = os.path.join('car_racing', 'test_images.txt')
+    test_csv  = os.path.join('car_racing', 'test_images.txt')
     train_dataset = dataset.CSVDataset(train_csv)
     test_dataset = dataset.CSVDataset(test_csv)
     kwargs = {'num_workers': 1, 'pin_memory': True} if settings.cuda else {}
@@ -65,57 +100,28 @@ def run(model, savefile):
                               shuffle=True, **kwargs)
     test_loader = DataLoader(test_dataset, batch_size=settings.batch_size,
                              shuffle=True, **kwargs)
-
-
-    results = cwd/'results'
-    results.mkdir(exist_ok=True)
     for epoch in range(settings.num_epochs):
-        train_on_data(model, epoch, train_loader)
-        test_on_data(model, epoch, test_loader)
+        train_on_data(vae, epoch, train_loader)
+        loss = test_on_data(vae, epoch, test_loader)
+        print(f'====> Test set average batch loss: {loss:.4f}')
+        torch.save(vae.state_dict(), f'{savefile}')  # Save after every epoch
         with torch.no_grad():
-            # Show variational examples from sample space
-            sample = torch.randn(64, 32).to(settings.device)
-            sample = model.decode(sample).cpu()
-            save_image(sample.view(64, 3, 64, 64),
-                       f'{results}/sample_{epoch}.png')
-
-            # Show autoencoding examples
-            length = len(test_dataset)
-            num_comparisons = 8
-            indices = np.random.randint(length, size=num_comparisons)
-            images = np.array([test_dataset[i] for i in indices])
-            tensor = torch.from_numpy(np.array(images)).to(settings.device)
-            reconstruction_tensor, _, _, _ = model(tensor)
-            reconstruction = reconstruction_tensor.cpu().data.numpy()
-            fig = plt.figure(figsize=(4*num_comparisons, num_comparisons))
-            for i in range(num_comparisons):
-                plt.subplot(2, num_comparisons, i+1)
-                plt.imshow(images[i].transpose((1, 2, 0)))
-                plt.xticks([])
-                plt.yticks([])
-                plt.subplot(2, num_comparisons, num_comparisons+i+1)
-                plt.imshow(reconstruction[i].transpose((1, 2, 0)))
-                plt.xticks([])
-                plt.yticks([])
-            fig.subplots_adjust(wspace=0, hspace=0)
-            plt.savefig(f'{results}/reconstruction_{epoch}.png')
-
-        # TODO: implement early stopping
-        torch.save(model.state_dict(), f'{savefile}')
+            plot_sample_space(vae, epoch)
+            plot_autoencoding(vae, test_dataset, epoch)
 
 
 def main():
     args = parse_args()
-    torch.manual_seed(settings.seed)
-
-    model = VAE(input_size=(3, 64, 64), latent_dim=32).to(settings.device)
-
+    input_size = (settings.reduced_image_channels,
+                  settings.reduced_image_width,
+                  settings.reduced_image_height)
+    vae = VAE(input_size=input_size,
+              latent_dim=settings.vae_latent_dim).to(settings.device)
     savefile = Path(args.savefile)
-
     if savefile.exists():
-        model.load_state_dict(torch.load(f'{savefile}'))
-        model.eval()
-    run(model, savefile)
+        vae.load_state_dict(torch.load(f'{savefile}'))
+        vae.eval()
+    run(vae, savefile)
 
 
 if __name__ == '__main__':
