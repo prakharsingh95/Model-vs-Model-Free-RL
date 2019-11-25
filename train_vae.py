@@ -1,6 +1,9 @@
+#!/usr/bin/env python3
 '''Train VAE model on data created using extract.py.'''
 
 import argparse
+import matplotlib.pyplot as plt
+import numpy as np
 import os
 import settings
 import torch
@@ -63,17 +66,39 @@ def run(model, savefile):
     test_loader = DataLoader(test_dataset, batch_size=settings.batch_size,
                              shuffle=True, **kwargs)
 
+
     results = cwd/'results'
     results.mkdir(exist_ok=True)
     for epoch in range(settings.num_epochs):
         train_on_data(model, epoch, train_loader)
         test_on_data(model, epoch, test_loader)
         with torch.no_grad():
-            # TODO: Add autoencoder comparison
+            # Show variational examples from sample space
             sample = torch.randn(64, 32).to(settings.device)
             sample = model.decode(sample).cpu()
             save_image(sample.view(64, 3, 64, 64),
                        f'{results}/sample_{epoch}.png')
+
+            # Show autoencoding examples
+            length = len(test_dataset)
+            num_comparisons = 8
+            indices = np.random.randint(length, size=num_comparisons)
+            images = np.array([test_dataset[i] for i in indices])
+            tensor = torch.from_numpy(np.array(images)).to(settings.device)
+            reconstruction_tensor, _, _, _ = model(tensor)
+            reconstruction = reconstruction_tensor.cpu().data.numpy()
+            fig = plt.figure(figsize=(4*num_comparisons, num_comparisons))
+            for i in range(num_comparisons):
+                plt.subplot(2, num_comparisons, i+1)
+                plt.imshow(images[i].transpose((1, 2, 0)))
+                plt.xticks([])
+                plt.yticks([])
+                plt.subplot(2, num_comparisons, num_comparisons+i+1)
+                plt.imshow(reconstruction[i].transpose((1, 2, 0)))
+                plt.xticks([])
+                plt.yticks([])
+            fig.subplots_adjust(wspace=0, hspace=0)
+            plt.savefig(f'{results}/reconstruction_{epoch}.png')
 
         # TODO: implement early stopping
         torch.save(model.state_dict(), f'{savefile}')
@@ -91,6 +116,7 @@ def main():
         model.load_state_dict(torch.load(f'{savefile}'))
         model.eval()
     run(model, savefile)
+
 
 if __name__ == '__main__':
     main()
