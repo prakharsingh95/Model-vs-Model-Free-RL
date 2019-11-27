@@ -157,3 +157,15 @@ class MixtureDensityLSTMCell(_MixtureDensityLSTMBase):
         out_termination_probs = torch.sigmoid(out_termination_probs)
 
         return out_mus, out_sigmas, out_md_logprobs, out_rewards, out_termination_probs, out_hiddens
+
+    def load_weights(self, other_model):
+        def map_key(key):
+            old = key
+            if key.endswith('_l0'):
+                key = key[:-3]
+            if key.startswith('lstm.'):
+                key = 'lstm_cell.' + key[5:]
+            return key
+        self.load_state_dict({
+            map_key(k):v for k, v in other_model.state_dict().items()
+        })
