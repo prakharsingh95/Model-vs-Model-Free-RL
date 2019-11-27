@@ -41,13 +41,13 @@ class TestMDRNN(unittest.TestCase):
                                           settings.vae_latent_dim))
 
     def test_mdrnn_cell(self, eps=1e-4):
-        BATCH_SIZE = 32
-        SEQ_LEN = 32
+        BATCH_SIZE = 1
+        SEQ_LEN = 1000
         in_actions = torch.normal(
-            0, 1, (BATCH_SIZE, SEQ_LEN, settings.action_space_size))\
+            -0.5, 1, (BATCH_SIZE, SEQ_LEN, settings.action_space_size))\
             .to(settings.device)
         in_latents = torch.normal(
-            0, 1, (BATCH_SIZE, SEQ_LEN, settings.vae_latent_dim))\
+            1, 1, (BATCH_SIZE, SEQ_LEN, settings.vae_latent_dim))\
             .to(settings.device)
 
         lstm_mus, lstm_sigmas, lstm_md_logprobs, lstm_rewards,\
