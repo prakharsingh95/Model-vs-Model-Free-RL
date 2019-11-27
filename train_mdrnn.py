@@ -20,7 +20,7 @@ parser.add_argument('--vae_savefile', type=str, default=f'{cwd}/vae.pt')
 parser.add_argument('--mdrnn_savefile', type=str,
                     default=f'{cwd}/mdrnn.pt')
 parser.add_argument('--include_reward', action='store_true')
-parser.add_argument('--use_mdrnn_checkpoint', action='store_true')
+parser.add_argument('--discard_checkpoint', action='store_true')
 args = parser.parse_args()
 
 vae = VAE(input_size=(settings.reduced_image_channels,
@@ -36,7 +36,7 @@ mdrnn = MixtureDensityLSTM(settings.vae_latent_dim,
                            settings.mdrnn_hidden_dim,
                            settings.mdrnn_num_gaussians).to(settings.device)
 
-if Path(args.mdrnn_savefile).exists() and args.use_mdrnn_checkpoint:
+if Path(args.mdrnn_savefile).exists() and not args.discard_checkpoint:
     print('Starting MDRNN training from checkpoint...')
     mdrnn.load_state_dict(torch.load(f'{args.mdrnn_savefile}'))
 
