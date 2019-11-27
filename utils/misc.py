@@ -106,7 +106,6 @@ class RolloutGenerator():
             new_k = new_k.replace('lstm', 'lstm_cell')
             new_state[new_k] = v
         self.mdrnn.load_state_dict(new_state)
-#       self.mdrnn.load_state_dict(torch.load(mdrnn_savefile))
         self.mdrnn.eval()
 
         input_size = (settings.vae_latent_dim
@@ -116,7 +115,6 @@ class RolloutGenerator():
 
         controller_savefille = mdir/'controller.pt'
         if Path(controller_savefille).exists():
-            print(f'loading controller')
             self.controller.load_state_dict(torch.load(controller_savefille))
         self.controller.eval()
 
@@ -176,9 +174,7 @@ class RolloutGenerator():
             if render:
                 self.env.render()
 
-#           print(f'reward = {reward}')
             cumulative += reward
             if done or i > self.time_limit:
-#               print(f'-cumulative = {-cumulative}')
                 return -cumulative
             i += 1
