@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 '''Take heavy inspiration from the ctallec implementation.
 
 Since we're minimizing through CMA-ES, we need to multiply the received
@@ -41,12 +40,12 @@ def parse_args():
                         help='Stops once the return gets above target_return.')
     parser.add_argument('--display', action='store_true',
                         help='Use progress bars if specified.')
-    parser.add_argument('--max-workers', type=int, default=1,
+    parser.add_argument('--max-workers', type=int, default=4,
                         help='Maximum number of workers.')
     return parser.parse_args()
 
 
-def evaluate(solutions, results, p_queue, r_queue, rollouts=1):
+def evaluate(solutions, results, p_queue, r_queue, rollouts=8):
     """ Give current controller evaluation.
 
     Evaluation is minus the cumulated reward averaged over rollout runs.
@@ -105,9 +104,8 @@ def slave_routine(p_queue, r_queue, e_queue, p_index, logdir):
                           if torch.cuda.is_available() else 'cpu')
 
     # redirect streams
-    # Uncomment these when multiprocessing
-#   sys.stdout = open(os.path.join(tmp_dir, str(os.getpid()) + '.out'), 'a')
-#   sys.stderr = open(os.path.join(tmp_dir, str(os.getpid()) + '.err'), 'a')
+    sys.stdout = open(os.path.join(tmp_dir, str(os.getpid()) + '.out'), 'a')
+    sys.stderr = open(os.path.join(tmp_dir, str(os.getpid()) + '.err'), 'a')
 
     with torch.no_grad():
         r_gen = RolloutGenerator(Path('.'), device, time_limit=1000)
@@ -130,9 +128,9 @@ def run(args):
     size = latent + mixture
     controller = Controller(size, 3)
 
-    # TODO: Run many of these to take advantage of evolutionary approach
-    Process(target=slave_routine,
-            args=(p_queue, r_queue, e_queue, 0, args.logdir)).start()
+    for i in range(args.max_workers):
+        Process(target=slave_routine,
+                args=(p_queue, r_queue, e_queue, i, args.logdir)).start()
 
     cur_best = None
     savefile = args.logdir/'best.tar'
@@ -144,11 +142,11 @@ def run(args):
 
 
     parameters = controller.parameters()
-    es = cma.CMAEvolutionStrategy(flatten_parameters(parameters), 0.1,
+    sigma = 0.1
+    es = cma.CMAEvolutionStrategy(flatten_parameters(parameters), sigma,
                                   {'popsize': args.pop_size})
 
     epoch = 0
-
     while not es.stop():
         if cur_best is not None and -cur_best > args.target_return:
             print('Already better than target, breaking...')
@@ -183,11 +181,9 @@ def run(args):
         # -1. But that baggage should be isolated and not confusing.
 
         # What does this call really do? Just gives a better estimate on how
-        # good the parameters are?
+        # good the best population's parameters are?
         best_params, best, std_best = evaluate(solutions, r_list, p_queue,
                                                r_queue)
-        print(f'Current evaluation: {-best}')
-        print(f'Best evaluation over time = {-cur_best}')
         if (not cur_best) or (cur_best > best):
             cur_best = best
             print(f'Saving new best with value {-cur_best}+{-std_best}')
@@ -201,7 +197,6 @@ def run(args):
         if -best > args.target_return:
             print(f'Terminating controller training with value {best}...')
             break
-
         epoch += 1
 
     es.result_pretty()
