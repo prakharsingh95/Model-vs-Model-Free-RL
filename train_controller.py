@@ -1,40 +1,42 @@
 #!/usr/bin/env python3
 '''Take heavy inspiration from the ctallec implementation.
 
-Since we're minimizing an objective function, we need to invert our
-rewards.
+Since we're minimizing through CMA-ES, we need to multiply the received
+reward by -1.
 '''
 
 import argparse
 import cma
+import numpy as np
 import os
 import sys
 import torch
 
 from pathlib import Path
+from time import sleep
 from torch.multiprocessing import Process, Queue
+from tqdm import tqdm
 
 from controller import Controller
+from utils.misc import RolloutGenerator
+from utils.misc import flatten_parameters
+from utils.misc import load_parameters
 
 cwd = Path(os.path.dirname(__file__))
 results = cwd/'results'
 logdir = results/'controller'
+controller_pt = cwd/'controller.pt'
 
-# TODO: How to refactor these global variables? Can encapsulate them in
-# an object.
-p_queue = Queue()
-r_queue = Queue()
-e_queue = Queue()
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--logdir', type=Path, default=logdir,
                         help='Where everything is stored.')
-    parser.add_argument('--n-samples', type=int,
+    parser.add_argument('--n-samples', type=int, default=4,
                         help='Number of samples used to obtain return'
                              'estimate.')
-    parser.add_argument('--pop-size', type=int, help='Population size.')
+    parser.add_argument('--pop-size', type=int, default=4, help='Population size.')
     parser.add_argument('--target-return', type=float,
                         help='Stops once the return gets above target_return.')
     parser.add_argument('--display', action='store_true',
@@ -44,16 +46,31 @@ def parse_args():
     return parser.parse_args()
 
 
-def flatten_parameters(params):
-    # TODO: Move this to utils file
-    """ Flattening parameters.
+def evaluate(solutions, results, p_queue, r_queue, rollouts=1):
+    """ Give current controller evaluation.
 
-    :args params: generator of parameters (as returned by module.parameters())
+    Evaluation is minus the cumulated reward averaged over rollout runs.
 
-    :returns: flattened parameters (i.e. one tensor of dimension 1 with all
-        parameters concatenated)
+    :args solutions: CMA set of solutions
+    :args results: corresponding results
+    :args rollouts: number of rollouts
+
+    :returns: minus averaged cumulated reward
     """
-    return torch.cat([p.detach().view(-1) for p in params], dim=0).cpu().numpy()
+    index_min = np.argmin(results)
+    best_guess = solutions[index_min]
+    restimates = []
+
+    for s_id in range(rollouts):
+        p_queue.put((s_id, best_guess))
+
+    print("Evaluating...")
+    for _ in tqdm(range(rollouts)):
+        while r_queue.empty():
+            sleep(.1)
+        restimates.append(r_queue.get()[1])
+
+    return best_guess, np.mean(restimates), np.std(restimates)
 
 
 def slave_routine(p_queue, r_queue, e_queue, p_index, logdir):
@@ -88,11 +105,12 @@ def slave_routine(p_queue, r_queue, e_queue, p_index, logdir):
                           if torch.cuda.is_available() else 'cpu')
 
     # redirect streams
-    sys.stdout = open(os.path.join(tmp_dir, str(os.getpid()) + '.out'), 'a')
-    sys.stderr = open(os.path.join(tmp_dir, str(os.getpid()) + '.err'), 'a')
+    # Uncomment these when multiprocessing
+#   sys.stdout = open(os.path.join(tmp_dir, str(os.getpid()) + '.out'), 'a')
+#   sys.stderr = open(os.path.join(tmp_dir, str(os.getpid()) + '.err'), 'a')
 
     with torch.no_grad():
-        r_gen = RolloutGenerator(args.logdir, device, time_limit)
+        r_gen = RolloutGenerator(Path('.'), device, time_limit=1000)
 
         while e_queue.empty():
             if p_queue.empty():
@@ -103,11 +121,16 @@ def slave_routine(p_queue, r_queue, e_queue, p_index, logdir):
 
 
 def run(args):
+    p_queue = Queue()
+    r_queue = Queue()
+    e_queue = Queue()
+
     latent = 32
     mixture = 256
     size = latent + mixture
-    controller = Controller(size)
+    controller = Controller(size, 3)
 
+    # TODO: Run many of these to take advantage of evolutionary approach
     Process(target=slave_routine,
             args=(p_queue, r_queue, e_queue, 0, args.logdir)).start()
 
@@ -126,7 +149,63 @@ def run(args):
 
     epoch = 0
 
-    # TODO: Add training loop
+    while not es.stop():
+        if cur_best is not None and -cur_best > args.target_return:
+            print('Already better than target, breaking...')
+            break
+
+        r_list = [0] * args.pop_size  # result list
+        solutions = es.ask()
+
+        # push parameters to queue
+        for s_id, s in enumerate(solutions):
+            for _ in range(args.n_samples):
+                p_queue.put((s_id, s))
+
+        # Retrieve results
+        if args.display:
+            pbar = tqdm(total=args.pop_size * args.n_samples)
+        for _ in range(args.pop_size * args.n_samples):
+            while r_queue.empty():
+                sleep(.1)
+            r_s_id, r = r_queue.get()
+            r_list[r_s_id] += r / args.n_samples
+            if args.display:
+                pbar.update(1)
+        if args.display:
+            pbar.close()
+
+        es.tell(solutions, r_list)
+        es.disp()
+
+        # TODO: Need to make negative reward more readable. CMA-ES seeks to
+        # minimize, so we want to multiply the reward we get in a rollout by
+        # -1. But that baggage should be isolated and not confusing.
+
+        # What does this call really do? Just gives a better estimate on how
+        # good the parameters are?
+        best_params, best, std_best = evaluate(solutions, r_list, p_queue,
+                                               r_queue)
+        print(f'Current evaluation: {-best}')
+        print(f'Best evaluation over time = {-cur_best}')
+        if (not cur_best) or (cur_best > best):
+            cur_best = best
+            print(f'Saving new best with value {-cur_best}+{-std_best}')
+            load_parameters(best_params, controller)
+            torch.save({'epoch': epoch,
+                        'reward': -cur_best,
+                        'state_dict': controller.state_dict()},
+                       savefile)
+            # Save after every epoch
+            torch.save(controller.state_dict(), f'{controller_pt}')
+        if -best > args.target_return:
+            print(f'Terminating controller training with value {best}...')
+            break
+
+        epoch += 1
+
+    es.result_pretty()
+    e_queue.put('EOP')
 
 
 def main():
