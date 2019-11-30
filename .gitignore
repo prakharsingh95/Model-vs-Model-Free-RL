@@ -114,4 +114,5 @@ venv.bak/
 rollout/
 dataset/car_racing/*.txt
 results/
+videos*
 
