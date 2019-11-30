@@ -10,7 +10,7 @@ import settings
 
 if __name__ == '__main__':
 
-    discrete_actions = ([-1, 0, 1], [1, 0], [0.2, 0])
+    discrete_actions = ([-1, 0, 1], [1, 0.5, 0], [1.0, 0.5, 0])
     action_dict = {
         idx: np.array(action)
         for idx, action in enumerate(it.product(*discrete_actions))
@@ -25,7 +25,6 @@ if __name__ == '__main__':
         height=96,
         width=96,
         action_dict=action_dict, 
-        max_neg_reward_steps=settings.DQN_MAX_NEG_STEPS,
         enable_rgb=settings.DQN_ENABLE_RGB
     )
 
