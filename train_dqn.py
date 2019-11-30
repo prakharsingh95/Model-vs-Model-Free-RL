@@ -10,7 +10,7 @@ import settings
 
 if __name__ == '__main__':
 
-    discrete_actions = ([-1, 0, 1], [1, 0], [0.2, 0])
+    discrete_actions = ([-1, 0, 1], [1, 0], [1, 0])
     action_dict = {
         idx: np.array(action)
         for idx, action in enumerate(it.product(*discrete_actions))
