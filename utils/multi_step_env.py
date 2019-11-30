@@ -121,15 +121,6 @@ class MultiStepEnv(object):
                 # obs = obs * 0
                 break
 
-        # if not done:
-        if total_reward < 0.0:
-            self.neg_reward_steps += 1
-        else:
-            self.neg_reward_steps = 0
-        if self.neg_reward_steps == self.max_neg_reward_steps:
-            done = True
-            total_reward += -20.0
-
         obs = self.process_frame(obs).copy()
 
         if not self.enable_rgb:
