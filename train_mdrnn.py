@@ -65,7 +65,7 @@ def get_loss(batch, save_results=False, epoch=None):
 
     mixture_loss = MixtureDensityLSTMLoss(next_z, pred_mus, pred_sigmas, pred_md_logprobs)
 
-    terminal_loss = F.binary_cross_entropy(pred_termination_probs, dones)
+    terminal_loss = F.binary_cross_entropy_with_logits(pred_termination_probs, dones)
 
     reward_loss = F.mse_loss(pred_rewards, rewards)
 

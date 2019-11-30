@@ -76,7 +76,7 @@ class MixtureDensityLSTM(_MixtureDensityLSTMBase):
 
         # Episode termination probability
         out_termination_probs = self.termination_prob_layer(outLSTMStates)
-        out_termination_probs = torch.sigmoid(out_termination_probs)
+        # out_termination_probs = torch.sigmoid(out_termination_probs)
 
         if sample:
             distrib = Normal(out_mus, out_sigmas)
@@ -154,7 +154,7 @@ class MixtureDensityLSTMCell(_MixtureDensityLSTMBase):
 
         # Episode termination probability
         out_termination_probs = self.termination_prob_layer(out_states)
-        out_termination_probs = torch.sigmoid(out_termination_probs)
+        # out_termination_probs = torch.sigmoid(out_termination_probs)
 
         return out_mus, out_sigmas, out_md_logprobs, out_rewards, out_termination_probs, out_hiddens
 
