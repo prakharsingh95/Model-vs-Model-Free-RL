@@ -94,12 +94,7 @@ class MultiStepEnv(object):
         return obs
 
     def random_action(self):
-        gas_actions = np.array(
-            [1 if a[1] == 1 and a[2] == 0 else 0 for a in self.action_dict.values()])
-        weights = 14.0 * gas_actions + 1.0
-        p = weights / np.sum(weights)
-        # print(p)
-        action_idx = np.random.choice(np.arange(len(self.action_dict)), p=p)
+        action_idx = np.random.randint(self.num_actions)
         return action_idx
 
     def step(self, action_idx):
