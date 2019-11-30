@@ -25,7 +25,8 @@ if __name__ == '__main__':
         height=96,
         width=96,
         action_dict=action_dict, 
-        max_neg_reward_steps=settings.DQN_MAX_NEG_STEPS
+        max_neg_reward_steps=settings.DQN_MAX_NEG_STEPS,
+        enable_rgb=settings.DQN_ENABLE_RGB
     )
 
     dqn = DQN(
@@ -37,7 +38,8 @@ if __name__ == '__main__':
         replay_min_size = settings.DQN_REPLAY_MIN_SIZE,
         replay_max_size = settings.DQN_REPLAY_MAX_SIZE,
         target_update_freq = settings.DQN_TARGET_UPDATE_FREQ,
-        train_batch_size = settings.DQN_TRAIN_BATCH_SIZE
+        train_batch_size = settings.DQN_TRAIN_BATCH_SIZE,
+        enable_rgb=settings.DQN_ENABLE_RGB
     )
 
     # if Path(settings.DQN_WEIGHTS_SAVE_FILE).exists():

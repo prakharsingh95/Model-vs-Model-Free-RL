@@ -24,7 +24,8 @@ class DQN(object):
         replay_min_size: int = None,
         replay_max_size: int = None,
         target_update_freq: int = None,
-        train_batch_size: int = None
+        train_batch_size: int = None,
+        enable_rgb: bool = None
     ):
 
         self.env = multi_step_env
@@ -38,8 +39,14 @@ class DQN(object):
 
         self.replay_memory = ReplayBuffer(capacity = replay_max_size)
         self.n_steps = 0
-        self.q_train = Q(self.env.frame_stack_size, self.env.height, self.env.width, self.env.num_actions).to(settings.device)
-        self.q_target = Q(self.env.frame_stack_size, self.env.height, self.env.width, self.env.num_actions).to(settings.device)
+
+        if enable_rgb:
+            self.q_train = Q(self.env.frame_stack_size*3, self.env.height, self.env.width, self.env.num_actions).to(settings.device)
+            self.q_target = Q(self.env.frame_stack_size*3, self.env.height, self.env.width, self.env.num_actions).to(settings.device)
+        else:
+            self.q_train = Q(self.env.frame_stack_size, self.env.height, self.env.width, self.env.num_actions).to(settings.device)
+            self.q_target = Q(self.env.frame_stack_size, self.env.height, self.env.width, self.env.num_actions).to(settings.device)
+
         self.optimizer = Adam(self.q_train.parameters(), eps=1e-7, lr=settings.DQN_OPTIM_LR, weight_decay=settings.DQN_OPTIM_L2_REG_COEFF)
         # self.mse_loss = nn.MSELoss()
         assert(self.q_train.state_dict().keys() == self.q_target.state_dict().keys())
