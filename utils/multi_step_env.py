@@ -26,7 +26,6 @@ class MultiStepEnv(object):
         width=None,
         enable_rgb=False,
         action_dict=None, 
-        max_neg_reward_steps=100
     ):
         assert height is not None and width is not None
         assert frame_stack_size is not None and frame_stack_size >= 2
@@ -37,7 +36,6 @@ class MultiStepEnv(object):
         self.frame_skips = frame_skips
         self.crop_width = crop_width
         self.crop_height = crop_height
-        self.max_neg_reward_steps = max_neg_reward_steps
         self.enable_rgb = enable_rgb
 
         self.env = None
@@ -103,7 +101,7 @@ class MultiStepEnv(object):
 
         action = self.action_dict[action_idx]
 
-        for _ in range(self.frame_skips):
+        for _ in range(self.frame_skips+1):
             obs, reward, done, _ = self.env.step(action)
             # self.env.render()
 

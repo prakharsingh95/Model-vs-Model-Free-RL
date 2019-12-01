@@ -1,5 +1,13 @@
 # Sample Efficient RL
 
+### Demos
+
+#### DQN (CarRacing-v0)
+
+<img src="demos/dqn-CarRacing-v0.gif" height="250" width="250">
+
+### How to Train
+
 #### Training VAE
   * Source set_pythonpath.bash
   * Go into the dataset/car_racing directory and run rollout.bash

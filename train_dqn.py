@@ -25,7 +25,6 @@ if __name__ == '__main__':
         height=96,
         width=96,
         action_dict=action_dict, 
-        max_neg_reward_steps=settings.DQN_MAX_NEG_STEPS,
         enable_rgb=settings.DQN_ENABLE_RGB
     )
 
