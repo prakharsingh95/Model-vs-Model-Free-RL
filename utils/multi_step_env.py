@@ -25,7 +25,8 @@ class MultiStepEnv(object):
         height=None, 
         width=None,
         enable_rgb=False,
-        action_dict=None, 
+        action_dict=None,
+        render_mode=None
     ):
         assert height is not None and width is not None
         assert frame_stack_size is not None and frame_stack_size >= 2
@@ -37,6 +38,9 @@ class MultiStepEnv(object):
         self.crop_width = crop_width
         self.crop_height = crop_height
         self.enable_rgb = enable_rgb
+        self.render_mode = render_mode
+
+        assert self.render_mode in ('direct', 'indirect')
 
         self.env = None
         self.buffer = None
@@ -49,12 +53,19 @@ class MultiStepEnv(object):
         if self.env is None:
             self.env = gym.make(self.env_name)
 
-        first_obs = self.process_frame(self.env.reset())
+        if self.render_mode == 'direct':
+            first_obs = self.process_frame(self.env.reset())
+        else:
+            self.env.reset()
+            first_obs = self.process_frame(self.env.render(mode='rgb_array'))
         # self.buffer = np.zeros((self.height,self.width, self.frame_stack_size)).astype(np.uint8)
         self.buffer = np.repeat(first_obs, self.frame_stack_size, axis=2)
 
         if video_log_file is not None:
-            env_height, env_width, _ = self.env.observation_space.shape
+            if self.render_mode == 'direct':
+                env_height, env_width, _ = self.env.observation_space.shape
+            else:
+                env_height, env_width, _ = self.env.render(mode='rgb_array').shape
             self.video_logger = VideoLogger(video_log_file,
                                             env_height, env_width)
         else:
@@ -103,7 +114,9 @@ class MultiStepEnv(object):
 
         for _ in range(self.frame_skips+1):
             obs, reward, done, _ = self.env.step(action)
-            # self.env.render()
+
+            if self.render_mode == 'indirect':
+                obs = self.env.render(mode='rgb_array')
 
             if self.video_logger is not None:
                 self.video_logger.write(obs.copy())
