@@ -15,17 +15,18 @@ from pathlib import Path
 from time import sleep
 from torch.multiprocessing import Process, Queue
 from tqdm import tqdm
+from xvfbwrapper import Xvfb
 
 from controller import Controller
 from utils.misc import RolloutGenerator
 from utils.misc import flatten_parameters
 from utils.misc import load_parameters
 
+
 cwd = Path(os.path.dirname(__file__))
 results = cwd/'results'
 logdir = results/'controller'
 controller_pt = cwd/'controller.pt'
-
 
 
 def parse_args():
@@ -40,12 +41,12 @@ def parse_args():
                         help='Stops once the return gets above target_return.')
     parser.add_argument('--display', action='store_true',
                         help='Use progress bars if specified.')
-    parser.add_argument('--max-workers', type=int, default=4,
+    parser.add_argument('--max-workers', type=int, default=12,
                         help='Maximum number of workers.')
     return parser.parse_args()
 
 
-def evaluate(solutions, results, p_queue, r_queue, rollouts=8):
+def evaluate(solutions, results, p_queue, r_queue, rollouts=96):
     """ Give current controller evaluation.
 
     Evaluation is minus the cumulated reward averaged over rollout runs.
@@ -95,27 +96,29 @@ def slave_routine(p_queue, r_queue, e_queue, p_index, logdir):
     :args e_queue: as soon as not empty, terminate
     :args p_index: the process index
     """
-    tmp_dir = logdir/'tmp'
-    tmp_dir.mkdir(parents=True, exist_ok=True)
+    # Prevent subprocesses from displaying to main X server
+    with Xvfb() as xvfb:
+        tmp_dir = logdir/'tmp'
+        tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    # init routine
-    gpu = p_index % torch.cuda.device_count()
-    device = torch.device('cuda:{}'.format(gpu)
-                          if torch.cuda.is_available() else 'cpu')
+        # init routine
+        gpu = p_index % torch.cuda.device_count()
+        device = torch.device('cuda:{}'.format(gpu)
+                              if torch.cuda.is_available() else 'cpu')
 
-    # redirect streams
-    sys.stdout = open(os.path.join(tmp_dir, str(os.getpid()) + '.out'), 'a')
-    sys.stderr = open(os.path.join(tmp_dir, str(os.getpid()) + '.err'), 'a')
+        # redirect streams
+        sys.stdout = open(os.path.join(tmp_dir, str(os.getpid()) + '.out'), 'a')
+        sys.stderr = open(os.path.join(tmp_dir, str(os.getpid()) + '.err'), 'a')
 
-    with torch.no_grad():
-        r_gen = RolloutGenerator(Path('.'), device, time_limit=1000)
+        with torch.no_grad():
+            r_gen = RolloutGenerator(Path('.'), device, time_limit=1000)
 
-        while e_queue.empty():
-            if p_queue.empty():
-                sleep(.1)
-            else:
-                s_id, params = p_queue.get()
-                r_queue.put((s_id, r_gen.rollout(params)))
+            while e_queue.empty():
+                if p_queue.empty():
+                    sleep(.1)
+                else:
+                    s_id, params = p_queue.get()
+                    r_queue.put((s_id, r_gen.rollout(params)))
 
 
 def run(args):
@@ -176,12 +179,9 @@ def run(args):
         es.tell(solutions, r_list)
         es.disp()
 
-        # TODO: Need to make negative reward more readable. CMA-ES seeks to
-        # minimize, so we want to multiply the reward we get in a rollout by
-        # -1. But that baggage should be isolated and not confusing.
+        # CMA-ES seeks to minimize, so we want to multiply the reward we
+        # get in a rollout by -1.
 
-        # What does this call really do? Just gives a better estimate on how
-        # good the best population's parameters are?
         best_params, best, std_best = evaluate(solutions, r_list, p_queue,
                                                r_queue)
         if (not cur_best) or (cur_best > best):

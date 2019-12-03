@@ -8,9 +8,9 @@ import settings
 
 from pathlib import Path
 from torchvision import transforms
+from xvfbwrapper import Xvfb
 
 from controller import Controller
-#from mdrnn import MixtureDensityLSTM
 from mdrnn import MixtureDensityLSTMCell
 from vae import VAE
 
@@ -113,9 +113,10 @@ class RolloutGenerator():
         output_size = 3
         self.controller = Controller(input_size, output_size).to(device)
 
-        controller_savefille = mdir/'controller.pt'
-        if Path(controller_savefille).exists():
-            self.controller.load_state_dict(torch.load(controller_savefille))
+        controller_savefile = mdir/'controller.pt'
+        if Path(controller_savefile).exists():
+            print(f'loading controller from {controller_savefile}')
+            self.controller.load_state_dict(torch.load(controller_savefile))
         self.controller.eval()
 
         self.env = gym.make('CarRacing-v0')

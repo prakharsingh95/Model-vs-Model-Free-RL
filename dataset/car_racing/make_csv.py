@@ -10,11 +10,12 @@ from tqdm import tqdm
 import settings
 
 cwd = Path(os.path.dirname(__file__))
-rollout = cwd/'rollout'
+rollouts = cwd/'rollouts'
+
 
 def make_csv():
     files = []
-    for i in sorted(rollout.iterdir()):
+    for i in sorted(rollouts.iterdir()):
         trajectory = Path(i)
         for file in sorted(trajectory.iterdir()):
             # TODO: Abstract this
@@ -30,18 +31,16 @@ def make_csv():
     with open('test_images.txt', 'w') as f:
         f.write('\n'.join(test_files))
 
+
 #TODO: refactor redundant parts in these two calls
 def make_seq_csv():
     dirs = []
-    for _dir in sorted(rollout.iterdir()):
+    for _dir in sorted(rollouts.iterdir()):
         dirs.append(('car_racing'/_dir).as_posix())
-
     np.random.shuffle(dirs)
-    split = int(settings.train_test_split*len(dirs))
-
+    split = len(dirs) - 5
     train_dirs = dirs[:split]
     test_dirs = dirs[split:]
-
     with open('train_seq_dirs.txt', 'w') as f:
         f.write('\n'.join(train_dirs))
     with open('test_seq_dirs.txt', 'w') as f:
