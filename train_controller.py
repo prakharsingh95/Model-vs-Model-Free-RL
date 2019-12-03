@@ -41,20 +41,12 @@ def parse_args():
                         help='Stops once the return gets above target_return.')
     parser.add_argument('--display', action='store_true',
                         help='Use progress bars if specified.')
-<<<<<<< HEAD
-    parser.add_argument('--max-workers', type=int, default=4,
-=======
     parser.add_argument('--max-workers', type=int, default=12,
->>>>>>> ryan
                         help='Maximum number of workers.')
     return parser.parse_args()
 
 
-<<<<<<< HEAD
-def evaluate(solutions, results, p_queue, r_queue, rollouts=8):
-=======
 def evaluate(solutions, results, p_queue, r_queue, rollouts=96):
->>>>>>> ryan
     """ Give current controller evaluation.
 
     Evaluation is minus the cumulated reward averaged over rollout runs.
