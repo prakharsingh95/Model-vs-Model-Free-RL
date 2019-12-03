@@ -25,7 +25,8 @@ class DQN(object):
         replay_max_size: int = None,
         target_update_freq: int = None,
         train_batch_size: int = None,
-        enable_rgb: bool = None
+        enable_rgb: bool = None,
+        model_save_file: str = None
     ):
 
         self.env = multi_step_env
@@ -36,6 +37,7 @@ class DQN(object):
         self.replay_min_size = replay_min_size
         self.target_update_freq = target_update_freq
         self.train_batch_size = train_batch_size
+        self.model_save_file = model_save_file
 
         self.replay_memory = ReplayBuffer(capacity = replay_max_size)
         self.n_steps = 0
@@ -176,7 +178,7 @@ class DQN(object):
                 obs = next_obs
 
             # Save weights
-            self.save_state(settings.DQN_WEIGHTS_SAVE_FILE)
+            self.save_state(self.model_save_file)
 
             all_rewards.append(total_reward)
             if(len(all_rewards) > 100):
