@@ -8,9 +8,9 @@ import settings
 
 from pathlib import Path
 from torchvision import transforms
+from xvfbwrapper import Xvfb
 
 from controller import Controller
-#from mdrnn import MixtureDensityLSTM
 from mdrnn import MixtureDensityLSTMCell
 from vae import VAE
 

@@ -101,7 +101,7 @@ class CSVSequenceDataset(Dataset):
         # TODO: generalize this using regex
 
         states, actions, rewards, dones = [], [], [], []
-        for i in range(in_data_file_num, in_data_file_num + self.seq_len + 1):
+        for i in range(in_data_file_num, in_data_file_num + self.seq_len):
             file_path = folder/f'frame_{i:04}.png'
             image = plt.imread(file_path.as_posix())
             image = self.transform(image)

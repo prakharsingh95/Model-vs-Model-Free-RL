@@ -5,17 +5,23 @@ trian the VAE.
 
 import argparse
 import cv2
+import json
 import gym
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-import json
+import torch
+
+import settings
 
 from PIL import Image
 from gym.envs.box2d.car_racing import CarRacing
 from gym.spaces.box import Box
 from pathlib import Path
 from skimage.transform import resize
+from torchvision import transforms
+
+from utils.misc import RolloutGenerator
 
 
 class CarRacingWrapper(CarRacing):
@@ -47,11 +53,10 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Rollout generator')
     parser.add_argument('--num_rollouts', type=int, default=1,
                         help='Number of rollouts to run')
-    savedir = cwd/'rollout'
-    parser.add_argument('--savedir', type=str, default=f'{savedir}',
+    parser.add_argument('--savedir', type=str, default=f'{cwd}/rollout',
                         help='Location to save rollouts')
     parser.add_argument('--policy', type=str, default='random',
-                        help='random, brown')
+                        help='random, brown, controller')
     args = parser.parse_args()
     return args
 
@@ -80,9 +85,7 @@ def brownian_sample(action_space, seq_len, dt):
 
 def rollout(env, savedir, policy):
     images = Path('images')
-    random_val = np.random.randint(2**31-1)
     max_frames = 1000
-    env.reset()
     num_seen_frames = 0
     done = False
     metadata = []
@@ -92,25 +95,40 @@ def rollout(env, savedir, policy):
     elif policy == 'brown':
         actions = brownian_sample(env.action_space, max_frames+1, dt=1/50)
 
-    state = None
+    hidden = [
+        torch.zeros(1, settings.mdrnn_hidden_dim).to(settings.device)
+        for _ in range(2)]
+    rg = RolloutGenerator(mdir=Path(os.environ['top']), device=settings.device,
+                          time_limit=1000)
+
+    obs = env.reset()
+
     while not done:
-        # TODO: Get action from RNN
-        action = actions[num_seen_frames]
+        if policy in ['random', 'brown']:
+            action = actions[num_seen_frames]
+        elif policy == 'controller':
+            transform = transforms.Compose([
+                transforms.ToPILImage(),
+                transforms.Resize((64, 64)),
+                transforms.ToTensor()
+            ])
+            obs = transform(obs).unsqueeze(0).to(settings.device)
+            action, hidden = rg.get_action_and_transition(obs, hidden)
         env.render('rgb_array')  # Look into why this call is necessary.
-        next_state, reward, done, _ = env.step(action)
+
+        obs, reward, done, _ = env.step(action)
 
         if num_seen_frames == max_frames:
             done = True
             reward = -100.0
 
-        if state is not None:
-            cv2.imwrite(f'{savedir}/frame_{num_seen_frames:04}.png', state)
+        if num_seen_frames > 0:
+            cv2.imwrite(f'{savedir}/frame_{num_seen_frames:04}.png', obs)
             metadata.append(
                 dict(idx=num_seen_frames,
                      action=action.tolist(),
                      reward=reward, done=done))
-            num_seen_frames += 1
-        state = next_state
+        num_seen_frames += 1
 
     with open(f'{savedir}/metadata.json', 'w') as f:
         content = json.dumps(metadata, indent=4)
