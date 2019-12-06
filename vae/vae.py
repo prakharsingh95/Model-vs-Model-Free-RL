@@ -15,6 +15,7 @@ from torchvision.utils import save_image
 class Encoder(nn.Module):
     def __init__(self, latent_dim):
         super(Encoder, self).__init__()
+        self.latent_dim = latent_dim
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=32, kernel_size=4,
                                stride=2) # -> 32 x 31 x 31
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4,

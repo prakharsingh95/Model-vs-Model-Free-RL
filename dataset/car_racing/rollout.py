@@ -49,11 +49,11 @@ class CarRacingWrapper(CarRacing):
 
 def parse_args():
     cwd = Path(os.path.dirname(__file__))
-    rollout = cwd/'rollout'
+    rollouts = cwd/'rollouts'
     parser = argparse.ArgumentParser(description='Rollout generator')
     parser.add_argument('--num_rollouts', type=int, default=1,
                         help='Number of rollouts to run')
-    parser.add_argument('--savedir', type=str, default=f'{cwd}/rollout',
+    parser.add_argument('--savedir', type=str, default=f'{cwd}/rollouts',
                         help='Location to save rollouts')
     parser.add_argument('--policy', type=str, default='random',
                         help='random, brown, controller')

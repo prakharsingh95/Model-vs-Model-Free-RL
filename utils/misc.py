@@ -22,6 +22,28 @@ transform = transforms.Compose([
 ])
 
 
+def brownian_sample(action_space, seq_len, dt):
+    """ Sample a continuous policy.
+
+    Atm, action_space is supposed to be a box environment. The policy is
+    sampled as a brownian motion a_{t+1} = a_t + sqrt(dt) N(0, 1).
+
+    :args action_space: gym action space
+    :args seq_len: number of actions returned
+    :args dt: temporal discretization
+
+    :returns: sequence of seq_len actions
+    """
+    # Taken unmodified from ctallec implementation
+    actions = [action_space.sample()]
+    for _ in range(1, seq_len):
+        daction_dt = np.random.randn(*actions[-1].shape)
+        actions.append(
+            np.clip(actions[-1] + np.sqrt(dt) * daction_dt,
+                    action_space.low, action_space.high))
+    return actions
+
+
 def unflatten_parameters(params, example, device):
     """ Unflatten parameters.
 
