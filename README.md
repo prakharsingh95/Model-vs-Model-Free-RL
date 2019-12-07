@@ -4,9 +4,10 @@
 
 #### DQN
 
-<img src="demos/dqn-CarRacing-v0.gif" height="250" width="250" style="display:inline;">
-<div style="display:inline;width:5px;"></div>
-<img src="demos/dqn-VizdoomDefendCenter-v0.gif" height="250" width="250" style="display:inline;">
+CarRacing-v0            |  VizdoomDefendCenter-v0
+:-------------------------:|:-------------------------:
+<img src="demos/dqn-CarRacing-v0.gif" height="300" width="300" style="display:inline;">  |  <img src="demos/dqn-VizdoomDefendCenter-v0.gif" height="300" width="300" style="display:inline;">
+
 
 ### Training World Models
 
