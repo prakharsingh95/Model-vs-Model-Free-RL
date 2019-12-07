@@ -6,7 +6,7 @@ import gym
 
 import settings
 
-from .misc import VideoLogger
+from .video_logger import VideoLogger
 
 from random import sample
 
