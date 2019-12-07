@@ -6,7 +6,6 @@ import numpy as np
 class ReplayBuffer(object):
 
     def __init__(self, capacity=100000):
-        print(f'Making buffer of capacity {capacity}')
         self.capacity = capacity
         self.buffer = []
         self.insert_idx = 0
