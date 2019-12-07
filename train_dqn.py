@@ -64,7 +64,6 @@ if __name__ == '__main__':
         REPLAY_MAX_SIZE = 40000
     else:
         raise NotImplementedError
->>>>>>> dqn
 
     env = MultiStepEnv(
         args.task,
