@@ -46,7 +46,12 @@ if __name__ == '__main__':
         DQN_EPS_MAX = 0.1
     elif args.task == 'VizdoomBasic-v0':
         action_dict = {idx: idx for idx in range(3)}
-        HEIGHT, WIDTH = 96, 96
+        HEIGHT, WIDTH = 128, 192
+        FRAME_SKIPS = 0
+    elif args.task == 'VizdoomDefendCenter-v0':
+        action_dict = {idx: idx for idx in range(3)}
+        HEIGHT, WIDTH = 128, 192
+        FRAME_SKIPS = 0
     elif args.task == 'LunarLander-v2':
         action_dict = {idx: idx for idx in range(4)}
         HEIGHT, WIDTH = 96, 128

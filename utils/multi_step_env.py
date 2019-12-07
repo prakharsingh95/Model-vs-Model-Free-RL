@@ -51,6 +51,8 @@ class MultiStepEnv(object):
 
     def reset(self, video_log_file=None):
         if self.env is None:
+            if 'Vizdoom' in self.env_name:
+                import vizdoomgym
             self.env = gym.make(self.env_name)
 
         if self.render_mode == 'direct':
