@@ -24,8 +24,13 @@ class DQN(object):
         replay_min_size: int = None,
         replay_max_size: int = None,
         target_update_freq: int = None,
+        steps_per_update: int = None,
         train_batch_size: int = None,
-        enable_rgb: bool = None
+        enable_rgb: bool = None,
+        model_save_file: str = None,
+        optim_l2_reg_coeff: float = None,
+        optim_lr: float = None,
+        eval_freq: int = None
     ):
 
         self.env = multi_step_env
@@ -36,6 +41,11 @@ class DQN(object):
         self.replay_min_size = replay_min_size
         self.target_update_freq = target_update_freq
         self.train_batch_size = train_batch_size
+        self.steps_per_update = steps_per_update
+        self.model_save_file = model_save_file
+        self.optim_lr = optim_lr
+        self.optim_l2_reg_coeff = optim_l2_reg_coeff
+        self.eval_freq = eval_freq
 
         self.replay_memory = ReplayBuffer(capacity = replay_max_size)
         self.n_steps = 0
@@ -47,7 +57,7 @@ class DQN(object):
             self.q_train = Q(self.env.frame_stack_size, self.env.height, self.env.width, self.env.num_actions).to(settings.device)
             self.q_target = Q(self.env.frame_stack_size, self.env.height, self.env.width, self.env.num_actions).to(settings.device)
 
-        self.optimizer = Adam(self.q_train.parameters(), eps=1e-7, lr=settings.DQN_OPTIM_LR, weight_decay=settings.DQN_OPTIM_L2_REG_COEFF)
+        self.optimizer = Adam(self.q_train.parameters(), eps=1e-7, lr=self.optim_lr, weight_decay=self.optim_l2_reg_coeff)
         # self.mse_loss = nn.MSELoss()
         assert(self.q_train.state_dict().keys() == self.q_target.state_dict().keys())
 
@@ -60,7 +70,6 @@ class DQN(object):
 
     def _update_q_target(self):
         if (self.n_steps % self.target_update_freq) == 0:
-            print('Copy to target...')
             self.copyAtoB(self.q_train, self.q_target)
             
 
@@ -69,7 +78,7 @@ class DQN(object):
         return (obs/255.0 * 2 - 1)
 
     def _update_q_train(self):
-        if self.replay_memory.size >= self.replay_min_size and (self.n_steps % settings.DQN_STEPS_PER_UPDATE) == 0:
+        if self.replay_memory.size >= self.replay_min_size and (self.n_steps % self.steps_per_update) == 0:
             self.q_train.train()
 
             states, action_idxs, rewards, next_states, dones = self.replay_memory.sample(self.train_batch_size)
@@ -135,11 +144,12 @@ class DQN(object):
 
         for n_episode in range(num_episodes):
     
+            # Log test episode
+            if n_episode % self.eval_freq == 0:
+                self.eval(1)
+
             # Reset the environment
-            if n_episode % settings.DQN_VIDEO_LOG_FREQ == 0:
-                obs = self.env.reset(video_log_file=f'dqn_train_log_episode_{n_episode}')
-            else:
-                obs = self.env.reset()
+            obs = self.env.reset()
 
             # Play an episode
             total_reward = 0.0
@@ -153,7 +163,7 @@ class DQN(object):
 
                 # Take a step
                 next_obs, reward, done, _ = self.env.step(action_idx)
-                
+
                 # nobs, nnext = self.normalize(obs), self.normalize(next_obs)
                 # print(np.mean(np.abs(nobs[:,:,0], nnext[:,:,0])))
                 # print(self.normalize(obs))
@@ -176,7 +186,7 @@ class DQN(object):
                 obs = next_obs
 
             # Save weights
-            self.save_state(settings.DQN_WEIGHTS_SAVE_FILE)
+            self.save_state(self.model_save_file)
 
             all_rewards.append(total_reward)
             if(len(all_rewards) > 100):
@@ -185,11 +195,43 @@ class DQN(object):
             last_100_avg_rwd = np.sum(all_rewards) / len(all_rewards)
 
             avg_loss = total_loss * 4.0/n
-            print('n_episode: {}, steps: {}, total_steps: {}, total_reward: {:.03f}, 100_avg_rwd: {:.03f}, avg_loss: {:.03f}, eps: {:.03f}, replay_size: {}'\
-                .format(n_episode, n, self.n_steps, total_reward, last_100_avg_rwd, avg_loss, self._get_epsilon(), self.replay_memory.size))
+            print('[TRAIN] n_episode: {}/{}, steps: {}, total_steps: {}, episode_reward: {:.03f}, 100_avg_rwd: {:.03f}, avg_loss: {:.03f}, eps: {:.03f}, replay_size: {}'\
+                .format(n_episode+1, num_episodes, n, self.n_steps, total_reward, last_100_avg_rwd, avg_loss, self._get_epsilon(), self.replay_memory.size))
 
+    def eval(self, num_episodes):
+        all_rewards = []
 
+        for n_episode in range(num_episodes):
+    
+            # Reset the environment
+            obs = self.env.reset(video_log_file=f'dqn_test_log_episode_{n_episode}')
+
+            # Play an episode
+            total_reward = 0.0
+            total_loss = 0.0
+            n = 0
+            done = False
             
+            while not done:
+                # Greedy action selection
+                action_idx = self._get_eps_greedy_action(obs, eps=0.0)
+
+                # Take a step
+                next_obs, reward, done, _ = self.env.step(action_idx)
+
+                # Bookkeeping
+                total_reward += reward                
+                n += 1
+                obs = next_obs
+
+
+            all_rewards.append(total_reward)
+
+            avg_rwd = np.sum(all_rewards) / len(all_rewards)
+
+            print('[EVAL] n_episode: {}/{}, steps: {}, episode_reward: {:.03f}, avg_rwd: {:.03f}'\
+                .format(n_episode+1, num_episodes, n, total_reward, avg_rwd))
+
 
 
 
