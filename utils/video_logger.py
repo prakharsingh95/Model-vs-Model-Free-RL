@@ -10,6 +10,7 @@ class VideoLogger(object):
                               24.0, (width, height))
 
     def write(self, obs):
+        obs = cv2.cvtColor(obs, cv2.COLOR_RGB2BGR)
         self.out.write(obs)
 
     def __del__(self):

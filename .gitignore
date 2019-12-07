@@ -116,3 +116,6 @@ dataset/car_racing/*.txt
 results/
 videos*
 
+# Vizdoom files
+_vizdoom.ini
+
