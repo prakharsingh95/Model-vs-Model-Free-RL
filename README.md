@@ -30,7 +30,14 @@ trains on the random action policy, so there isn't much variation in the road.
 * Train VAE as above (duh!)
 * Call train_mdrnn.py
 
-Note that training the MDRNN requires that the VAE is well trained!
+#### Training Controller
+  * Train the VAE and MDRNN
+  * Call python train_controller.py --n-samples 4 --pop-size 6 --target-return 950 --max-workers=12
+    * max-workers sets how many population parameters to run in parallel, where each population
+      requires a core for evaluation
+
+Note that training the MDRNN requires that the VAE is well trained, and training the controller
+requires that both the VAE and MDRNN are well trained!
 
 ### Training DQN
 
