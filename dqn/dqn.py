@@ -83,11 +83,11 @@ class DQN(object):
 
             states, action_idxs, rewards, next_states, dones = self.replay_memory.sample(self.train_batch_size)
 
-            states = torch.FloatTensor(states).to(settings.device).permute(0,3,1,2)
-            action_idxs = torch.LongTensor(action_idxs).to(settings.device)
-            rewards = torch.FloatTensor(rewards).to(settings.device)
-            next_states = torch.FloatTensor(next_states).to(settings.device).permute(0,3,1,2)
-            dones = torch.FloatTensor(dones).to(settings.device)
+            states = torch.from_numpy(states).float().to(settings.device).permute(0,3,1,2)
+            action_idxs = torch.from_numpy(action_idxs).long().to(settings.device)
+            rewards = torch.from_numpy(rewards).float().to(settings.device)
+            next_states = torch.from_numpy(next_states).float().to(settings.device).permute(0,3,1,2)
+            dones = torch.from_numpy(dones).float().to(settings.device)
 
             states = self.normalize(states)
             next_states = self.normalize(next_states)
@@ -114,11 +114,13 @@ class DQN(object):
             return self.env.random_action()
         else:
             self.q_train.eval()
-            obs = self.normalize(obs)
-            obs = torch.FloatTensor(obs).to(settings.device)
-            obs = obs.unsqueeze(0).permute(0,3,1,2)
-            q = self.q_train(obs).squeeze(0)
-            return torch.argmax(q).detach().cpu().item()
+            with torch.no_grad():
+                obs = self.normalize(obs)
+                obs = torch.from_numpy(obs).float().to(settings.device)
+                obs = obs.unsqueeze(0).permute(0,3,1,2)
+                q = self.q_train(obs).squeeze(0)
+                action = torch.argmax(q).detach().cpu().item()
+            return action
 
 
     def _get_epsilon(self):
@@ -194,7 +196,7 @@ class DQN(object):
 
             last_100_avg_rwd = np.sum(all_rewards) / len(all_rewards)
 
-            avg_loss = total_loss * 4.0/n
+            avg_loss = total_loss * self.steps_per_update/n
             print('[TRAIN] n_episode: {}/{}, steps: {}, total_steps: {}, episode_reward: {:.03f}, 100_avg_rwd: {:.03f}, avg_loss: {:.03f}, eps: {:.03f}, replay_size: {}'\
                 .format(n_episode+1, num_episodes, n, self.n_steps, total_reward, last_100_avg_rwd, avg_loss, self._get_epsilon(), self.replay_memory.size))
 
