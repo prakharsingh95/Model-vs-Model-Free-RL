@@ -1,4 +1,4 @@
-# Sample Efficient RL
+# Model vs Model-Free RL
 
 ### Demos
 
