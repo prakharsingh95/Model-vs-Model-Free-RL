@@ -14,6 +14,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Train OpenAI gym agent using a Deep Q-Network')
     parser.add_argument('--task', type=str, default='CarRacing-v0')
+    parser.add_argument('--train', type=int, default=0)
+    parser.add_argument('--eval', type=int, default=0)
     args = parser.parse_args()
 
     # Load default DQN parameters from settings
@@ -43,30 +45,41 @@ if __name__ == '__main__':
             for idx, action in enumerate(it.product(*discrete_actions))
         }
         HEIGHT, WIDTH = 96, 96
+        DQN_GAMMA = 0.95
+        DQN_STEPS_PER_UPDATE = 4
+        DQN_OPTIM_LR = 5e-4
         DQN_EPS_MAX = 0.1
     elif args.task == 'VizdoomBasic-v0':
         action_dict = {idx: idx for idx in range(3)}
         HEIGHT, WIDTH = 128, 192
-        FRAME_SKIPS = 0
     elif args.task == 'VizdoomDefendCenter-v0':
         action_dict = {idx: idx for idx in range(3)}
         HEIGHT, WIDTH = 128, 192
-        FRAME_SKIPS = 0
+    elif args.task == 'VizdoomTakeCover-v0':
+        action_dict = {idx: idx for idx in range(2)}
+        HEIGHT, WIDTH = 128, 192
+        DQN_FRAME_STACK_SIZE = 2
+        DQN_FRAME_SKIPS = 3
+        DQN_EPS_DECAY_STEPS = 1000000
+        DQN_GAMMA = 1.0
+        DQN_REPLAY_MIN_SIZE = 10000
+        DQN_STEPS_PER_UPDATE = 1
+        DQN_TRAIN_BATCH_SIZE = 32
+        DQN_OPTIM_LR = 5e-4
     elif args.task == 'LunarLander-v2':
         action_dict = {idx: idx for idx in range(4)}
         HEIGHT, WIDTH = 96, 128
-        RENDER_MODE = 'indirect'
-        FRAME_SKIPS = 0
-        EPS_MAX = 1.0
-        EPS_DECAY_STEPS = 1000000
-        REPLAY_MAX_SIZE = 100000
+        DQN_RENDER_MODE = 'indirect'
+        DQN_FRAME_SKIPS = 0
+        DQN_EPS_MAX = 1.0
+        DQN_EPS_DECAY_STEPS = 1000000
+        DQN_REPLAY_MAX_SIZE = 100000
     elif args.task == 'Breakout-v0':
         action_dict = {idx: idx for idx in range(4)}
         HEIGHT, WIDTH = 128, 96
-        FRAME_SKIPS = 2
-        EPS_MAX = 1.0
-        EPS_DECAY_STEPS = 200000
-        REPLAY_MAX_SIZE = 40000
+        DQN_EPS_MAX = 1.0
+        DQN_EPS_DECAY_STEPS = 200000
+        DQN_REPLAY_MAX_SIZE = 40000
     else:
         raise NotImplementedError
 
@@ -105,6 +118,7 @@ if __name__ == '__main__':
     else:
         print(f'Checkpoint {DQN_WEIGHTS_SAVE_FILE} does not exist...')
 
-    dqn.eval(1)
-    dqn.train(2000)
-    dqn.test(100)
+    if args.train > 0:
+        dqn.train(args.train)
+    if args.eval > 0:
+        dqn.eval(args.eval)
