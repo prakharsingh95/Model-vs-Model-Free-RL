@@ -1,5 +1,6 @@
 '''Miscellaneous functions and classes.'''
 
+import cv2
 import gym
 import numpy as np
 import torch
@@ -111,8 +112,9 @@ class RolloutGenerator():
         self.vae = VAE(input_size=vae_input_size,
                        latent_dim=settings.vae_latent_dim).to(device)
         vae_savefile =  mdir/'vae.pt'
-        self.vae.load_state_dict(torch.load(vae_savefile))
-        self.vae.eval()
+        if Path.exists(vae_savefile):
+            self.vae.load_state_dict(torch.load(vae_savefile))
+            self.vae.eval()
 
         self.mdrnn = MixtureDensityLSTMCell(
             settings.vae_latent_dim,
@@ -121,14 +123,15 @@ class RolloutGenerator():
             settings.mdrnn_num_gaussians).to(device)
 
         mdrnn_savefile = mdir/'mdrnn.pt'
-        state = torch.load(mdrnn_savefile)
-        new_state = {}
-        for k, v in state.items():
-            new_k = k.rstrip('_l0')
-            new_k = new_k.replace('lstm', 'lstm_cell')
-            new_state[new_k] = v
-        self.mdrnn.load_state_dict(new_state)
-        self.mdrnn.eval()
+        if Path.exists(mdrnn_savefile):
+            state = torch.load(mdrnn_savefile)
+            new_state = {}
+            for k, v in state.items():
+                new_k = k.rstrip('_l0')
+                new_k = new_k.replace('lstm', 'lstm_cell')
+                new_state[new_k] = v
+            self.mdrnn.load_state_dict(new_state)
+            self.mdrnn.eval()
 
         input_size = (settings.vae_latent_dim
                       + settings.mdrnn_hidden_dim)
