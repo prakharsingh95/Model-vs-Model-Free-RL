@@ -43,7 +43,7 @@ as the agent explores more of the environment. These three steps are looped in t
 ### Training DQN
 
 ```
-xvfb-run -a -s "-screen 0 1400x900x24 +extension RANDR" python3 train_dqn.py --task "CarRacing-v0"
+xvfb-run -a -s "-screen 0 1400x900x24 +extension RANDR" python3 train_dqn.py --task "CarRacing-v0 --train 2000 --eval 100"
 ```
 
 Note that `xvfb-run` is necessary iff you are training on computer without a display connected (e.g. over SSH).
