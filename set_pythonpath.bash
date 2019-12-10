@@ -1,1 +1,2 @@
 export PYTHONPATH=$PYTHONPATH:$PWD
+export top=$PWD
