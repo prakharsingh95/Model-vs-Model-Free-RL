@@ -37,7 +37,8 @@ trains on the random action policy, so there isn't much variation in the road.
       requires a core for evaluation
 
 Note that training the MDRNN requires that the VAE is well trained, and training the controller
-requires that both the VAE and MDRNN are well trained!
+requires that both the VAE and MDRNN are well trained! It's important to retrain the VAE and MDRNN
+as the agent explores more of the environment. These three steps are looped in train.bash.
 
 ### Training DQN
 
