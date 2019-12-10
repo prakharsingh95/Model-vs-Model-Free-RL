@@ -18,7 +18,7 @@ Real Rollout | Hallucinated Rollout
 
 #### Training VAE
   * Source set_pythonpath.bash
-  * Go into the dataset/car_racing directory and run rollout.bash
+  * Go into the dataset/car_racing directory and run rollout_wrapper.py
   * Run make_csv.py in datasets/car_racing
   * Call train_vae.py
   * Sampled mappings of noise reconstructions are seen in results
